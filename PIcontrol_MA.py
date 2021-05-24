@@ -31,10 +31,10 @@
 
 #### USER-SPECIFIED CONTROL PARAMETERS ####
 #refvals=[288.13,0.76,-5.98] reference values for CESM2(WACCM6) (Tilmes et al. 2020) 2020-2039
-refvals=[288.64,0.880,-5.87] # updated to be average over years 2010-2029
+refvals=[288.51,0.880,-5.87] # updated to be average over years 2010-2029
 #refvals=[288.21,0.594,-6.006] # new version of the model (GLENS values)
-kivals=[0.0356,0.0753,0.3120]
-kpvals=[0.0356,0.0753,0.3120]
+kivals=[0.0183,0.0753,0.3120]
+kpvals=[0.0183,0.0753,0.3120]
 firstyear=2035
 baseyear=2030
 x_ramp = 5.0 # defines a range of years over which the feedback is ramped up
@@ -76,7 +76,7 @@ dt2=timestamp-firstyear
 #l1hat=-0.005*dt
 #l2hat=0.006*dt
 # updated based on feedback simulation
-l0hat=0.0067*dt/1.14
+l0hat=0.0067*dt/1.40
 l1hat=-0.000*dt
 l2hat=0.00*dt
 
@@ -105,7 +105,7 @@ if (l2==(l0-l1s-l1n)):
     sumdt2=sumdt2-(T2-refvals[2])
     sumde[2]=sumdt2
 
-M=numpy.array([[0,37,37,0],[0,0,76,1],[28,45,0,0],[40,0,0,40]])
+M=numpy.array([[0,30,30,0],[0,0,45,20],[20,45,0,0],[40,0,0,40]])
 F=numpy.array([[1,1,1,1],[0,1,0,0],[0,0,1,0],[0,0,0,1]])
 
 q=numpy.dot(numpy.dot(numpy.transpose(M),numpy.linalg.inv(F)),ell)
