@@ -30,11 +30,17 @@
 # a string by putting it in quotes ''.  All lines beginning with # are comments.
 
 #### USER-SPECIFIED CONTROL PARAMETERS ####
-#refvals=[288.13,0.76,-5.98] reference values for CESM2(WACCM6) (Tilmes et al. 2020) 2020-2039
-refvals=[288.51,0.880,-5.87] # updated to be average over years 2010-2029
-#refvals=[288.21,0.594,-6.006] # new version of the model (GLENS values)
-kivals=[0.0183,0.0753,0.3120]
+
+# Target temperature values
+old_refvals=[288.51,0.880,-5.87] # old target values: averages during the years 2020-2039 (CESM2-WACCM-MA, SSP2-45)
+new_refvals=[287.99,0.811,-5.91] # new target values: averages during the years 2008-2027 (in which T0 is ~0.5 degrees lower than the old targets)
+#new_refvals=[287.51,0.755,-5.91] # new target values: averages during the years 1993-2012 (in which T0 is ~1.0 degrees lower than the old targets)
+
+# feedback control gains
+kivals=[0.0183,0.0753,0.3120] # taken from Walker's TSMLT controller gain estimates
 kpvals=[0.0183,0.0753,0.3120]
+
+# timeline
 firstyear=2035
 baseyear=2030
 x_ramp = 5.0 # defines a range of years over which the feedback is ramped up
@@ -71,14 +77,20 @@ else:
 
 dt=timestamp-baseyear
 dt2=timestamp-firstyear
-# feedforward
-#l0hat=0.011*dt
-#l1hat=-0.005*dt
-#l2hat=0.006*dt
-# updated based on feedback simulation
-l0hat=0.0067*dt/1.40
-l1hat=-0.000*dt
-l2hat=0.00*dt
+
+# feedforward calculations
+
+if dt2<10
+    refvals=old_refvals+(new_refvals-old-refvals)*dt2/10
+else
+    refvals=new_refvals
+
+sens=-4.1 # sensitivity; change to T0 per l0 (this may be small but we're dividing by 1.4 later to compensate)
+change=0.0273*dt+288.5029-refvals[0] # total change to offset = expected change from 2030 onward + difference between 2030 and target value
+
+l0hat=change/sens/1.40
+l1hat=0.000
+l2hat=0.00
 
 ramp_up = 1.0
 if (dt2<x_ramp):
