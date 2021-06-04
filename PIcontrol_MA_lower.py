@@ -44,7 +44,7 @@ kpvals=[0.0183,0.0753,0.3120]
 firstyear=2035
 baseyear=2030
 x_ramp = 5.0 # defines a range of years over which the feedback is ramped up
-
+transition = 10.0 # defines the length of the transition (in years) to get to a certain target
 
 #### USER SPECIFIED CALCULATIONS ####
 logfilename='ControlLog_'+runname+'.txt'
@@ -57,41 +57,47 @@ if os.path.exists(maindir+'/'+logfilename)==False:
 else:
     loglines=readlog(maindir+'/'+logfilename)
 
+
 w=makeweights(lats,lons)
 T0=numpy.mean(gmean(outvals[0],w))
 T1=numpy.mean(l1mean(outvals[0],w,lats))
 T2=numpy.mean(l2mean(outvals[0],w,lats))
 
+if firsttime==1:
+    timestamp=firstyear
+else:
+    timestamp=int(loglines[-1][0])+1
+
+dt=timestamp-baseyear
+dt2=timestamp-firstyear
+
+old_refvals = numpy.array(old_refvals)
+new_refvals = numpy.array(new_refvals)
+
+if dt2<transition:
+    trans_fact=dt2/transition
+    refvals=(1.0-trans_fact)*old_refvals+trans_fact*new_refvals
+else:
+    refvals=new_refvals
+
 de=numpy.array([T0-refvals[0],T1-refvals[1],T2-refvals[2]]) # error terms
 
 if firsttime==1:
-    timestamp=firstyear
     sumde=de
     sumdt2=de[2]
 else:
-    timestamp=int(loglines[-1][0])+1
     sumdt0=float(loglines[-1][2])+(T0-refvals[0])
     sumdt1=float(loglines[-1][4])+(T1-refvals[1])
     sumdt2=float(loglines[-1][6])+(T2-refvals[2])
     sumde=numpy.array([sumdt0,sumdt1,sumdt2])
 
-dt=timestamp-baseyear
-dt2=timestamp-firstyear
-
 # feedforward calculations
 
-if dt2<10
-    refvals=old_refvals+(new_refvals-old-refvals)*dt2/10
-else
-    refvals=new_refvals
-
-sens=-4.1 # sensitivity; change to T0 per l0 (this may be small but we're dividing by 1.4 later to compensate)
-change=0.0273*dt+288.5029-refvals[0] # total change to offset = expected change from 2030 onward + difference between 2030 and target value
-
+sens=4.1 # sensitivity; change to T0 per l0 (this may be small but we're dividing by 1.4 later to compensate)
+change=0.0273*dt+(288.5029-refvals[0]) # total change to offset = expected change from 2030 onward + difference between 2030 and target value
 l0hat=change/sens/1.40
 l1hat=0.000
 l2hat=0.00
-
 ramp_up = 1.0
 if (dt2<x_ramp):
     ramp_up = dt2 / x_ramp
@@ -105,13 +111,11 @@ l2kp1=(kpvals[2]*de[2]+kivals[2]*sumde[2]-l0kp1)*ramp_up
 l0step4=l0kp1+l0hat
 l1step4=l1kp1+l1hat
 l2step4=l2kp1+l2hat
-
 l0=max(l0step4,0)
 l1n=min(max(l1step4,0),l0)
 l1s=min(max(-l1step4,0),l0)
 l2=min(max(l2step4,0),l0-l1s-l1n)
 ell=numpy.array([[l0],[l1n],[l1s],[l2]])
-
 # preventing integrator wind-up
 if (l2==(l0-l1s-l1n)):
     sumdt2=sumdt2-(T2-refvals[2])
@@ -143,9 +147,9 @@ nlname2="/glade/work/geostrat/injection_files/SO2_geoeng_2020-2100_serial_1Tg_21
 nlname3="/glade/work/geostrat/injection_files/SO2_geoeng_2020-2100_serial_1Tg_21.9-22.1km_15.6N_180E_0.95x1.25_cANN210319.nc"
 nlname4="/glade/work/geostrat/injection_files/SO2_geoeng_2020-2100_serial_1Tg_21.9-22.1km_30.6N_180E_0.95x1.25_cANN210319.nc"
 
-nlval1="         'SO2    -> "+str(q[0])[1:-1]+"*/glade/work/geostrat/injection_files/SO2_geoeng_2020-2100_serial_1Tg_21.9-22.1km_30.6S_180E_0.95x1.25_cANN210319.nc'"+"\n"
-nlval2="         'SO2    -> "+str(q[1])[1:-1]+"*/glade/work/geostrat/injection_files/SO2_geoeng_2020-2100_serial_1Tg_21.9-22.1km_15.6S_180E_0.95x1.25_cANN210319.nc',"+"\n"
-nlval3="         'SO2    -> "+str(q[2])[1:-1]+"*/glade/work/geostrat/injection_files/SO2_geoeng_2020-2100_serial_1Tg_21.9-22.1km_15.6N_180E_0.95x1.25_cANN210319.nc',"+"\n"
-nlval4="         'SO2    -> "+str(q[3])[1:-1]+"*/glade/work/geostrat/injection_files/SO2_geoeng_2020-2100_serial_1Tg_21.9-22.1km_30.6N_180E_0.95x1.25_cANN210319.nc',"+"\n"
+nlval1="         'SO2    -> "+str(q[0])[1:-1]+"0*/glade/work/geostrat/injection_files/SO2_geoeng_2020-2100_serial_1Tg_21.9-22.1km_30.6S_180E_0.95x1.25_cANN210319.nc'"+"\n"
+nlval2="         'SO2    -> "+str(q[1])[1:-1]+"0*/glade/work/geostrat/injection_files/SO2_geoeng_2020-2100_serial_1Tg_21.9-22.1km_15.6S_180E_0.95x1.25_cANN210319.nc',"+"\n"
+nlval3="         'SO2    -> "+str(q[2])[1:-1]+"0*/glade/work/geostrat/injection_files/SO2_geoeng_2020-2100_serial_1Tg_21.9-22.1km_15.6N_180E_0.95x1.25_cANN210319.nc',"+"\n"
+nlval4="         'SO2    -> "+str(q[3])[1:-1]+"0*/glade/work/geostrat/injection_files/SO2_geoeng_2020-2100_serial_1Tg_21.9-22.1km_30.6N_180E_0.95x1.25_cANN210319.nc',"+"\n"
 
 nlvals=[nlname1,nlval1,nlname2,nlval2,nlname3,nlval3,nlname4,nlval4]
