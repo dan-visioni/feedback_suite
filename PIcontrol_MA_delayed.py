@@ -32,18 +32,19 @@
 #### USER-SPECIFIED CONTROL PARAMETERS ####
 
 # Target temperature values
-old_refvals=[288.81,0.928,-5.85] # old target values: averages during the years 2030-2049 (CESM2-WACCM-MA, SSP2-45)
-new_refvals=[288.51,0.880,-5.87] # new target values: averages during the years 2020-2039 
+start_refvals=[288.81,0.928,-5.85] # initial target values (averages during the years 2030-2049, CESM2-WACCM-MA, SSP2-45)
+final_refvals=[288.51,0.880,-5.87] # final target values (averages during the years 2020-2039, same background)
 
 # feedback control gains
 kivals=[0.0183,0.0753,0.3120] # taken from Walker's TSMLT controller gain estimates
 kpvals=[0.0183,0.0753,0.3120]
 
 # timeline
-firstyear=2045
-baseyear=2040
-x_ramp = 5.0 # defines a range of years over which the feedback is ramped up
-transition = 5.0 # defines the length of the transition (in years) to get to a certain target
+firstyear=2045       # starting year of simulation
+baseyear_start=2040  # "reference year" from which initial targets (start_refvals) are derived
+baseyear_final=2030  # "reference year" from which final targets (final_refvals) are derived
+x_ramp = 5.0         # defines a range of years over which the feedback is ramped up
+transition = 5.0     # defines the length (yrs) of the transition between the initial and final targets
 
 #### USER SPECIFIED CALCULATIONS ####
 logfilename='ControlLog_'+runname+'.txt'
@@ -66,17 +67,16 @@ if firsttime==1:
 else:
     timestamp=int(loglines[-1][0])+1
 
-dt=timestamp-baseyear
-dt2=timestamp-firstyear
+dt=timestamp-firstyear     # years of simulation completed
 
-old_refvals = numpy.array(old_refvals)
-new_refvals = numpy.array(new_refvals)
+start_refvals = numpy.array(start_refvals)
+final_refvals = numpy.array(final_refvals)
 
-if dt2<transition:
-    trans_fact=dt2/transition
-    refvals=(1.0-trans_fact)*old_refvals+trans_fact*new_refvals
+if dt<transition:
+    trans_fact=dt/transition
+    refvals=(1.0-trans_fact)*start_refvals+trans_fact*final_refvals # if we're in the transition period, compute targets for this year
 else:
-    refvals=new_refvals
+    refvals=final_refvals                                           # if we're past the transition period, targets = final targets
 
 de=numpy.array([T0-refvals[0],T1-refvals[1],T2-refvals[2]]) # error terms
 
@@ -89,11 +89,20 @@ else:
     sumdt2=float(loglines[-1][6])+(T2-refvals[2])
     sumde=numpy.array([sumdt0,sumdt1,sumdt2])
 
-# feedforward calculations
+# feedforward calculations: account for how much T0 has changed since the reference period
+dt_old=timestamp-baseyear_start # years passed since the reference period, if we're using the "initial" targets
+dt_new=timestamp-baseyear_final # years passed since the reference period, if we're using the "final" targets
 
-sens=4.1 # sensitivity; change to T0 per l0 (this may be small but we're dividing by 1.4 later to compensate)
-change=0.0273*dt+(old_refvals[0]-refvals[0]) # total change to offset = expected change from 2030 onward + difference between 2030 and target value
-l0hat=change/sens/1.40
+if dt<transition:
+    trans_fact=dt/transition
+    dt_trans=(1.0-trans_fact)*dt_old+trans_fact*dt_new # years passed since the "effective" reference period, accounting for transition period
+else:
+    dt_trans=dt_new # if we're past the transition period, we only care about years passed since the "final" reference period
+
+change=0.0273*dt_trans # this is approximately how much T0 changes per year, and therefore how much we want to offset w/ fdfwd
+sens=4.1 # sensitivity; change to T0 per unit l0 (this may be small because it came from 10-year runs, but we're dividing by 1.4 later to compensate)
+
+l0hat=change/sens/1.40 # dT0 desired over dT0/dl0, and scaled by 1/1.4
 l1hat=0.000
 l2hat=0.00
 ramp_up = 1.0
